@@ -1,0 +1,92 @@
+"Phrases"
+{
+  "Main Menu Title"
+  {
+    "en"		"Rems Knives"
+  }
+  "Main Menu Targetting Team Title"
+  {
+    "en"		"Targetting:"
+  }
+  "Select Team Target"
+  {
+    "en"		"Select Team Target"
+  }
+  "Select Knife"
+  {
+    "en"		"Select Knife"
+  }
+  "Target Team Current Team"
+  {
+    "en"		"Current Team"
+  }
+  "Target Team T"
+  {
+    "en"		"{yellow}Terrorists{default}"
+  }
+  "Target Team CT"
+  {
+    "en"		"{lightblue}Counter-Terrorists{default}"
+  }
+  "Target Team Both Teams"
+  {
+    "en"		"Both Teams"
+  }
+  "Current Knife"
+  {
+    "en"		"Currently:"
+  }
+  "Knife Name"
+  {
+    "en"		"knife name"
+  }
+  "Search Knife"
+  {
+    "en"		"Search For Knife"
+  }
+  "Random Knife"
+  {
+    "en"		"Random Knife"
+  }
+  "Default Knife"
+  {
+    "en"		"Default Knife"
+  }
+  "Default Knife T Display Name"
+  {
+    "en"		"Default T"
+  }
+  "Default Knife CT Display Name"
+  {
+    "en"		"Default CT"
+  }
+  "Selected Target Team"
+  {
+    "#format"	"{1:s}"
+    "en"			"You are now targetting: {olive}{1}{default}"
+  }
+  "Equipped Knife"
+  {
+    "#format"	"{1:s},{2:t}"
+    "en"			"You have equipped the {olive}{1}{default} knife for: {2}"
+  }
+  "Equipped Knife Dead"
+  {
+    "#format"	"{1:s},{2:t}"
+    "en"			"You have selected the {olive}{1}{default} knife for: {2}. It will be equipped the next time you spawn."
+  }
+  "Generic Enter Chat"
+  {
+    "#format"	"{1:t}"
+    "en" "Please enter the {olive}{1}{default} into chat and press {olive}ENTER{default}..."
+  }
+  "Search Found No Results"
+  {
+    "#format"	"{1:s}"
+    "en" "Your search query '{olive}{1}{default}' returned no results."
+  }
+  "Must be VIP"
+  {
+    "en"			"You must be a VIP user to use this command. Type {lime}!vip{default} to learn more."
+  }
+}
