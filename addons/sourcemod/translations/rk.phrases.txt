@@ -89,4 +89,8 @@
   {
     "en"			"You must be a VIP user to use this command. Type {lime}!vip{default} to learn more."
   }
+  "Plugin Not Ready"
+  {
+    "en"			"This plugin is not ready yet. Please wait a little and try again."
+  }
 }

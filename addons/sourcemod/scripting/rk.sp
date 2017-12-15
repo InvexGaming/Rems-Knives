@@ -13,7 +13,7 @@
 /*********************************
  *  Plugin Information
  *********************************/
-#define PLUGIN_VERSION "1.00"
+#define PLUGIN_VERSION "1.01"
 
 public Plugin myinfo =
 {
@@ -387,6 +387,12 @@ public bool WeaponCanUse(int client, int ent, bool canuse)
 //Show Gloves Menu or perform a search
 public Action Command_Knife(int client, int args)
 {
+  //Check if knives are loaded
+  if (!g_AreKnivesLoaded) {
+    CPrintToChat(client, "%s%t", CHAT_TAG_PREFIX, "Plugin Not Ready");
+    return Plugin_Handled;
+  }
+
   //Get VIP status
   if (!IsClientVip(client)) {
     CPrintToChat(client, "%s%t", CHAT_TAG_PREFIX, "Must be VIP");
@@ -426,9 +432,17 @@ public int MainMenuHandler(Menu menu, MenuAction action, int client, int param2)
   GetMenuItem(menu, param2, info, sizeof(info), _, display, sizeof(display));
   int selectedIndex = StringToInt(info);
 
-  int targetTeams[MAX_TARGET_TEAMS];
-  int numTargetTeams = GetClientTargetTeam(client, targetTeams);
 
+  //For these menu actions, we will check target teams and set the first target team
+  int targetTeams[MAX_TARGET_TEAMS];
+  int numTargetTeams  = 0;
+
+  if (action == MenuAction_DrawItem || action == MenuAction_DisplayItem || action == MenuAction_Select) {
+    //Get target teams
+    numTargetTeams = GetClientTargetTeam(client, targetTeams);
+  }
+
+  //Handle menu actions
   if (action == MenuAction_DrawItem) {
     //Hacky way to set title
     if (param2 % MAX_MENU_OPTIONS == 0) { 
@@ -517,17 +531,24 @@ public int KnivesMenuHandler(Menu menu, MenuAction action, int client, int param
   char display[64];
   GetMenuItem(menu, param2, info, sizeof(info), _, display, sizeof(display));
   int selectedIndex = StringToInt(info);
-  
-  //Get target teams
-  int targetTeams[MAX_TARGET_TEAMS];
-  int numTargetTeams = GetClientTargetTeam(client, targetTeams);
-  if (numTargetTeams == 0)
-    return 0;
-  
-  //Use first target team to display various information (even if more than 1 target team exists)
-  int firstTargetTeam = targetTeams[0];
-  int firstFinalIndex = GetFinalKnivesIndex(client, firstTargetTeam, selectedIndex);
 
+  //For these menu actions, we will check target teams and set the first target team
+  int firstTargetTeam = 0;
+  int firstFinalIndex  = 0;
+
+  if (action == MenuAction_DrawItem || action == MenuAction_DisplayItem || action == MenuAction_Select) {
+    //Get target teams
+    int targetTeams[MAX_TARGET_TEAMS];
+    int numTargetTeams = GetClientTargetTeam(client, targetTeams);
+    if (numTargetTeams == 0)
+      return 0;
+    
+    //Use first target team to display various information (even if more than 1 target team exists)
+    firstTargetTeam = targetTeams[0];
+    firstFinalIndex = GetFinalKnivesIndex(client, firstTargetTeam, selectedIndex);
+  }
+  
+  //Handle menu actions
   if (action == MenuAction_DrawItem) {
     //Hacky way to set title
     if (param2 % MAX_MENU_OPTIONS == 0) {
