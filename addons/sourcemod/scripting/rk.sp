@@ -250,7 +250,7 @@ public void CSGOItems_OnItemsSynced()
   g_KnivesDefIndexes = new ArrayList(1);
   
   //Temp variables  
-  char numStrBuffer[5];
+  char numStrBuffer[16];
   char mainMenuItemName[64];
   char targetTeamString[64];
 
@@ -317,7 +317,7 @@ public void CSGOItems_OnItemsSynced()
       GetKnifeDisplaynameByDefIndex(itemDefinitionIndex, displayName, sizeof(displayName));
 
       //Add item to menu
-      char item[5];
+      char item[16];
       Format(item, sizeof(item), "%i", g_KnivesDefIndexes.Length-1);
       g_KnivesMenu.AddItem(item, displayName);
     }
