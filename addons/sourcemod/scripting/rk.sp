@@ -106,7 +106,7 @@ public void OnPluginStart()
   //Translations
   LoadTranslations("rk.phrases");
 
-  //Setup cookkies
+  //Setup cookies
   g_TargetTeamCookie = RegClientCookie("RemsKnives_TargetTeam", "Team that is being targetted", CookieAccess_Private);
   g_KnifeTCookie = RegClientCookie("RemsKnives_KnifeT", "Knife selection for T side", CookieAccess_Private);
   g_KnifeCTCookie = RegClientCookie("RemsKnives_KnifeCT", "Knife selection for CT side", CookieAccess_Private);
@@ -789,11 +789,11 @@ bool ProcessKnifeSelection(int client, int selectedIndex)
 }
 
 //Search for knives by string
-//Will return index of a knife (including action indexes) or -1 on failure
+//Will return index of a knife (including action indexes) or INVALID_KNIFE_INDEX on failure
 int SearchKnivesByString(const char[] query)
 {
   char buffer[64];
-  int startingMatch = -1, partialMatch = -1;
+  int startingMatch = INVALID_KNIFE_INDEX, partialMatch = INVALID_KNIFE_INDEX;
   
   //Hard code default and random search phrases
   if (StrEqual("default", query, false))
@@ -823,7 +823,7 @@ int SearchKnivesByString(const char[] query)
   }
 
   //Prefer startingMatches over partialMatches
-  return (startingMatch != -1) ? startingMatch : partialMatch;
+  return (startingMatch != INVALID_KNIFE_INDEX) ? startingMatch : partialMatch;
 }
 
 
