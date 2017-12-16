@@ -13,7 +13,7 @@
 /*********************************
  *  Plugin Information
  *********************************/
-#define PLUGIN_VERSION "1.01"
+#define PLUGIN_VERSION "1.02"
 
 public Plugin myinfo =
 {
@@ -82,6 +82,9 @@ int g_ClientKnives[MAXPLAYERS+1][4]; //can be indexed directly with team for T a
 TargetTeam g_ClientTargetTeam[MAXPLAYERS+1] = {TargetTeam_CurrentTeam, ...};
 bool g_WaitingForSayInput[MAXPLAYERS+1] = {false, ...};
 
+//Forwards
+bool g_IsPostAdminCheck[MAXPLAYERS+1] = {false, ...}; //for OnClientPostAdminCheckAndCookiesCached
+
 //Menu
 Menu g_MainMenu = null;
 Menu g_TargetTeamMenu = null;
@@ -133,11 +136,15 @@ public void OnPluginStart()
   //Late load
   if (g_LateLoaded) {
     for (int i = 1; i <= MaxClients; ++i) {
+      //This is a comprimise check which ensures OnClientPreAdminCheck is reached
+      //There is no actual way to check PostAdminCheck status in a late load
+      g_IsPostAdminCheck[i] = IsClientInGame(i) && IsClientAuthorized(i);
+
       if (IsClientInGame(i)) {
         OnClientPutInServer(i);
-      
-        if (!IsFakeClient(i) && AreClientCookiesCached(i))
-          OnClientCookiesCached(i);
+
+        if (!IsFakeClient(i) && g_IsPostAdminCheck[i] && AreClientCookiesCached(i))
+          OnClientPostAdminCheckAndCookiesCached(i);
       }
     }
     
@@ -180,17 +187,35 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 
 public void OnClientPutInServer(int client)
 {
+  //Initilise variables
   g_WaitingForSayInput[client] = false;
+  g_ClientTargetTeam[client] = TargetTeam_CurrentTeam;
+  g_ClientKnives[client][CS_TEAM_T] = DEFAULT_KNIFE_INDEX_T;
+  g_ClientKnives[client][CS_TEAM_CT] = DEFAULT_KNIFE_INDEX_CT;
+}
 
-  //Initilize these variables if cookies uncached at this stage
-  if (!AreClientCookiesCached(client)) {
-    g_ClientTargetTeam[client] = TargetTeam_CurrentTeam;
-    g_ClientKnives[client][CS_TEAM_T] = DEFAULT_KNIFE_INDEX_T;
-    g_ClientKnives[client][CS_TEAM_CT] = DEFAULT_KNIFE_INDEX_CT;
-  }
+public void OnClientConnected(int client)
+{
+  g_IsPostAdminCheck[client] = false;
 }
 
 public void OnClientCookiesCached(int client)
+{
+  if (g_IsPostAdminCheck[client])
+    OnClientPostAdminCheckAndCookiesCached(client);
+}
+
+public void OnClientPostAdminCheck(int client)
+{
+  g_IsPostAdminCheck[client] = true;
+
+  if (AreClientCookiesCached(client))
+    OnClientPostAdminCheckAndCookiesCached(client);
+}
+
+//Run when PostAdminCheck reached and cookies are cached
+//Always run for every client and always after both OnClientCookiesCached and OnClientPostAdminCheck
+void OnClientPostAdminCheckAndCookiesCached(int client)
 {
   if (!IsClientInGame(client) || IsFakeClient(client))
     return;
@@ -201,20 +226,15 @@ public void OnClientCookiesCached(int client)
 
   //For non-VIP's do not load in the stored cookie preferences
   //If the client gets VIP status at a later time, their preferences will still be there
-  if (!IsClientVip(client)) {
-    //Reset global variables
-    g_ClientTargetTeam[client] = TargetTeam_CurrentTeam;
-    g_ClientKnives[client][CS_TEAM_T] = DEFAULT_KNIFE_INDEX_T;
-    g_ClientKnives[client][CS_TEAM_CT] = DEFAULT_KNIFE_INDEX_CT;
-
+  if (!IsClientVip(client))
     return;
-  }
 
   //Load in cookie values
   char buffer[16];
 
   GetClientCookie(client, g_TargetTeamCookie, buffer, sizeof(buffer));
-  g_ClientTargetTeam[client] = view_as<TargetTeam>(StringToInt(buffer));
+  if (strlen(buffer) != 0)
+    g_ClientTargetTeam[client] = view_as<TargetTeam>(StringToInt(buffer));
 
   //Check if the item def can be mapped to an index
   //If not, then we'll reset to the defaults
@@ -326,10 +346,10 @@ public void CSGOItems_OnItemsSynced()
   //Knives are now loaded
   g_AreKnivesLoaded = true;
 
-  //Load cookies at this point
+  //Load preferences at this point
   for (int i = 1; i <= MaxClients; ++i) {
-    if (IsClientInGame(i) && !IsFakeClient(i) && AreClientCookiesCached(i))
-      OnClientCookiesCached(i);
+    if (IsClientInGame(i) && !IsFakeClient(i) && g_IsPostAdminCheck[i] && AreClientCookiesCached(i))
+      OnClientPostAdminCheckAndCookiesCached(i);
   }
 }
 
@@ -833,7 +853,7 @@ int SearchKnivesByString(const char[] query)
 
 stock bool IsClientVip(int client)
 {
-  if (!IsClientInGame(client) || IsFakeClient(client))
+  if (!IsClientConnected(client) || IsFakeClient(client))
     return false;
   
   char buffer[2];
@@ -845,7 +865,7 @@ stock bool IsClientVip(int client)
 
   return ClientHasCharFlag(client, buffer[0]);
 }
- 
+
 stock bool ClientHasCharFlag(int client, char charFlag)
 {
   AdminFlag flag;
@@ -854,6 +874,9 @@ stock bool ClientHasCharFlag(int client, char charFlag)
 
 stock bool ClientHasAdminFlag(int client, AdminFlag flag)
 {
+  if (!IsClientConnected(client))
+    return false;
+  
   AdminId admin = GetUserAdmin(client);
   if (admin != INVALID_ADMIN_ID && GetAdminFlag(admin, flag, Access_Effective))
     return true;
