@@ -13,7 +13,7 @@
 /*********************************
  *  Plugin Information
  *********************************/
-#define PLUGIN_VERSION "1.02"
+#define PLUGIN_VERSION "1.03"
 
 public Plugin myinfo =
 {
@@ -259,6 +259,10 @@ void OnClientPostAdminCheckAndCookiesCached(int client)
 
 public void CSGOItems_OnItemsSynced()
 {
+  //If already loaded, no need to reload
+  if (g_AreKnivesLoaded)
+    return;
+
   //Reset values
   delete g_MainMenu;
   delete g_TargetTeamMenu;
@@ -266,7 +270,6 @@ public void CSGOItems_OnItemsSynced()
   delete g_KnivesDefIndexes;
 
   //Reset variables
-  g_AreKnivesLoaded = false;
   g_KnivesDefIndexes = new ArrayList(1);
   
   //Temp variables  
