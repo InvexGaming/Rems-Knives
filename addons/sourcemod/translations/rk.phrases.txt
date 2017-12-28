@@ -65,12 +65,12 @@
     "#format"	"{1:s}"
     "en"			"You are now targetting: {olive}{1}{default}"
   }
-  "Equipped Knife"
+  "Equipped Knife Instant"
   {
     "#format"	"{1:s},{2:t}"
     "en"			"You have equipped the {olive}{1}{default} knife for: {2}"
   }
-  "Equipped Knife Dead"
+  "Equipped Knife Spawn"
   {
     "#format"	"{1:s},{2:t}"
     "en"			"You have selected the {olive}{1}{default} knife for: {2}. It will be equipped the next time you spawn."

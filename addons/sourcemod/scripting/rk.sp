@@ -13,13 +13,13 @@
 /*********************************
  *  Plugin Information
  *********************************/
-#define PLUGIN_VERSION "1.03"
+#define PLUGIN_VERSION "1.04"
 
 public Plugin myinfo =
 {
   name = "Rems Knives (!rk)",
   author = "Invex | Byte",
-  description = "Provides official Valve knives to players.",
+  description = "Provides official CSGO knives to players.",
   version = PLUGIN_VERSION,
   url = "http://www.invexgaming.com.au"
 };
@@ -68,7 +68,7 @@ enum TargetTeam
 
 //Convars
 ConVar g_Cvar_VipFlag = null;
-ConVar g_Cvar_GiveKnifeInstantly = null;
+ConVar g_Cvar_Instant = null;
 
 //Cookies
 Handle g_TargetTeamCookie = null;
@@ -115,17 +115,17 @@ public void OnPluginStart()
   g_KnifeCTCookie = RegClientCookie("RemsKnives_KnifeCT", "Knife selection for CT side", CookieAccess_Private);
 
   //ConVars
-  g_Cvar_VipFlag = CreateConVar("sm_rk_vipflag", "", "Flag to identify VIP players");
-  g_Cvar_GiveKnifeInstantly = CreateConVar("sm_rk_giveinstantly", "1", "Should the player receive the knife instantly (if alive)");
+  g_Cvar_VipFlag = CreateConVar("sm_rk_vipflag", "", "Flag to identify VIP players. Leave blank for open access.");
+  g_Cvar_Instant = CreateConVar("sm_rk_instant", "1", "Should the player receive the knife instantly (if alive)");
 
   AutoExecConfig(true, "rk");
 
   //Commands
-  RegConsoleCmd("sm_rk", Command_Knife, "Select a knife");
-  RegConsoleCmd("sm_knife", Command_Knife, "Select a knife");
-  RegConsoleCmd("sm_knifes", Command_Knife, "Select a knife");
-  RegConsoleCmd("sm_knive", Command_Knife, "Select a knife");
-  RegConsoleCmd("sm_knives", Command_Knife, "Select a knife");
+  RegConsoleCmd("sm_rk", Command_Knife, "Select a knife via menu or quick search");
+  RegConsoleCmd("sm_knife", Command_Knife, "Select a knife via menu or quick search");
+  RegConsoleCmd("sm_knifes", Command_Knife, "Select a knife via menu or quick search");
+  RegConsoleCmd("sm_knive", Command_Knife, "Select a knife via menu or quick search");
+  RegConsoleCmd("sm_knives", Command_Knife, "Select a knife via menu or quick search");
 
   //Initilise 2D Array
   for (int i = 0; i < sizeof(g_ClientKnives); ++i) {
@@ -156,8 +156,8 @@ public void OnPluginStart()
   }
 
   //Hooks
+  PTaH(PTaH_GiveNamedItem, Hook, GiveNamedItem);
   PTaH(PTaH_GiveNamedItemPre, Hook, GiveNamedItemPre);
-  PTaH(PTaH_WeaponCanUse, Hook, WeaponCanUse);
 }
 
 //Monitor chat to capture commands
@@ -217,11 +217,11 @@ public void OnClientPostAdminCheck(int client)
 //Always run for every client and always after both OnClientCookiesCached and OnClientPostAdminCheck
 void OnClientPostAdminCheckAndCookiesCached(int client)
 {
-  if (!IsClientInGame(client) || IsFakeClient(client))
-    return;
-
   //Don't process if knives have not been loaded yet
   if (!g_AreKnivesLoaded)
+    return;
+
+  if (!IsClientInGame(client) || IsFakeClient(client))
     return;
 
   //For non-VIP's do not load in the stored cookie preferences
@@ -360,9 +360,47 @@ public void CSGOItems_OnItemsSynced()
  *  Hooks
  *********************************/
 
+//Hook to equip knife
+public void GiveNamedItem(int client, const char[] classname, const CEconItemView item, int entity)
+{
+  //Wait until knives are loaded first
+  if (!g_AreKnivesLoaded)
+    return;
+
+  if (IsFakeClient(client))
+    return;
+  
+  int itemDefinitionIndex = CSGOItems_GetWeaponDefIndexByWeapon(entity);
+  if (itemDefinitionIndex == -1)
+    return;
+  
+  if (!CSGOItems_IsDefIndexKnife(itemDefinitionIndex))
+    return;
+
+  //Ensure player does not already has a knife
+  //This prevents forcefully equipping multiple knives if other plugins give the player a knife without removing the current one
+  //Check using m_hMyWeapons instead of slots to ensure other knife slot items (i.e. taser) are allowed
+  for (int i = 0; i < GetEntPropArraySize(client, Prop_Send, "m_hMyWeapons"); ++i) {
+    int weapon = GetEntPropEnt(client, Prop_Send, "m_hMyWeapons", i);
+
+    if(weapon && IsValidEntity(weapon)) {
+      int weaponItemDefinitionIndex = CSGOItems_GetWeaponDefIndexByWeapon(weapon);
+      if (CSGOItems_IsDefIndexKnife(weaponItemDefinitionIndex))
+        return;
+    }
+  }
+  
+  //Eqiup the knife
+  EquipPlayerWeapon(client, entity);
+}
+
 //Main hook where we override classname of the knife
 public Action GiveNamedItemPre(int client, char classname[64], CEconItemView &item, bool &ignoredCEconItemView)
 {
+  //Wait until knives are loaded first
+  if (!g_AreKnivesLoaded)
+    return Plugin_Continue;
+  
   if (IsFakeClient(client))
     return Plugin_Continue;
 
@@ -372,7 +410,7 @@ public Action GiveNamedItemPre(int client, char classname[64], CEconItemView &it
     return Plugin_Continue;
 
   int itemDefinitionIndex = CSGOItems_GetWeaponDefIndexByClassName(classname);
-  if (itemDefinitionIndex <= -1)
+  if (itemDefinitionIndex == -1)
     return Plugin_Continue;
 
   bool isKnife = CSGOItems_IsDefIndexKnife(itemDefinitionIndex);
@@ -390,17 +428,6 @@ public Action GiveNamedItemPre(int client, char classname[64], CEconItemView &it
   }
 
   return Plugin_Continue;
-}
-
-//Have to set canuse to true to allow us to pick up the knife
-public bool WeaponCanUse(int client, int ent, bool canuse)
-{
-	int itemDefinitionIndex = CSGOItems_GetWeaponDefIndexByWeapon(ent);
-	
-	if (CSGOItems_IsDefIndexKnife(itemDefinitionIndex))
-		return true;
-	
-	return canuse;
 }
 
 /*********************************
@@ -671,7 +698,7 @@ void GiveClientKnife(int client)
 
   if (!IsPlayerAlive(client))
     return;
-    
+
   //Check team
   int clientTeam = GetClientTeam(client);
   if (clientTeam != CS_TEAM_T && clientTeam != CS_TEAM_CT)
@@ -794,7 +821,7 @@ bool ProcessKnifeSelection(int client, int selectedIndex)
     SetClientKnife(client, targetTeams[i], finalIndex);
 
     //Check if we should give the client the knife instantly
-    if (g_Cvar_GiveKnifeInstantly.BoolValue && (currentTeam == targetTeams[i]) && IsPlayerAlive(client))
+    if (g_Cvar_Instant.BoolValue && (currentTeam == targetTeams[i]) && IsPlayerAlive(client))
       GiveClientKnife(client);
 
     //Get knife display name
@@ -802,10 +829,10 @@ bool ProcessKnifeSelection(int client, int selectedIndex)
     GetKnifeDisplaynameByDefIndex(g_KnivesDefIndexes.Get(finalIndex), knifeDisplayName, sizeof(knifeDisplayName));
 
     //Print selection message
-    if (IsPlayerAlive(client))
-      CPrintToChat(client, "%s%t", CHAT_TAG_PREFIX, "Equipped Knife", knifeDisplayName, ((targetTeams[i] == CS_TEAM_T) ? "Target Team T" : "Target Team CT") );
+    if (g_Cvar_Instant.BoolValue && IsPlayerAlive(client))
+      CPrintToChat(client, "%s%t", CHAT_TAG_PREFIX, "Equipped Knife Instant", knifeDisplayName, ((targetTeams[i] == CS_TEAM_T) ? "Target Team T" : "Target Team CT") );
     else
-      CPrintToChat(client, "%s%t", CHAT_TAG_PREFIX, "Equipped Knife Dead", knifeDisplayName, ((targetTeams[i] == CS_TEAM_T) ? "Target Team T" : "Target Team CT"));
+      CPrintToChat(client, "%s%t", CHAT_TAG_PREFIX, "Equipped Knife Spawn", knifeDisplayName, ((targetTeams[i] == CS_TEAM_T) ? "Target Team T" : "Target Team CT"));
   }
 
   return true;
